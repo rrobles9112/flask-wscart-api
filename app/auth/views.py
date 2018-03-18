@@ -18,7 +18,8 @@ class RegistrationView(MethodView):
                 # Register the user
                 email = post_data['email']
                 password = post_data['password']
-                user = User(email=email, password=password)
+                country_iso2 = post_data['country_iso2']
+                user = User(email=email, password=password, country_iso2=country_iso2)
                 user.save()
 
                 response = {

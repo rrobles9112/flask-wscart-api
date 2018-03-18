@@ -1,12 +1,13 @@
-# flask-rest-api [![Build Status](https://travis-ci.org/gitgik/flask-rest-api.svg?branch=master)](https://travis-ci.org/gitgik/flask-rest-api)
-A flask-driven restful API for Bucketlist interactions
+# flask-wscart-api 
+
+REST API for a webshop cart. The API implement a handler for saving and fetching shopping cart data to and from a database. 
 
 
 ## Technologies used
 * **[Python3](https://www.python.org/downloads/)** - A programming language that lets you work more quickly (The universe loves speed!).
 * **[Flask](flask.pocoo.org/)** - A microframework for Python based on Werkzeug, Jinja 2 and good intentions
 * **[Virtualenv](https://virtualenv.pypa.io/en/stable/)** - A tool to create isolated virtual environments
-* **[PostgreSQL](https://www.postgresql.org/download/)** – Postgres database offers many [advantages](https://www.postgresql.org/about/advantages/) over others.
+* **[MySQL](https://www.mysql.com/downloads/)** – [Why MySQL?](https://www.mysql.com/why-mysql/).
 * Minor dependencies can be found in the requirements.txt file on the root folder.
 
 
@@ -18,14 +19,14 @@ A flask-driven restful API for Bucketlist interactions
     ```
 * Git clone this repo to your PC
     ```
-        $ git clone git@github.com:gitgik/flask-rest-api.git
+        $ git clone https://github.com/msubair/flask-wscart-api.git
     ```
 
 
 * #### Dependencies
     1. Cd into your the cloned repo as such:
         ```
-        $ cd flask-rest-api
+        $ cd flask-wscart-api
         ```
 
     2. Create and fire up your virtual environment in python3:
@@ -38,13 +39,15 @@ A flask-driven restful API for Bucketlist interactions
     Create a .env file and add the following:
     ```
     source venv/bin/activate
-    export SECRET="some-very-long-string-of-random-characters-CHANGE-TO-YOUR-LIKING"
-    export APP_SETTINGS="development"
-    export DATABASE_URL="postgresql://localhost/flask_api"
+    export FLASK_APP="run.py"
+    export FLASK_APP_SETTINGS="development"
+    export FLASK_SECRET="this is random string secret"
+    export MYSQL_USER="<change with your mysql username>"
+    export MYSQL_PASSWORD="<change with your mysql password>"
+    export MYSQL_DATABASE_NAME="WSCartAPI"
     ```
 
-    Save the file. CD out of the directory and back in. `Autoenv` will automagically set the variables.
-    We've now kept sensitive info from the outside world! 😄
+    Save the file. CD out of the directory and back in.
 
 * #### Install your requirements
     ```
@@ -52,18 +55,24 @@ A flask-driven restful API for Bucketlist interactions
     ```
 
 * #### Migrations
-    On your psql console, create your database:
+    On your MySQL console, create your main database (for development/production):
     ```
-    > CREATE DATABASE flask_api;
+    > CREATE DATABASE WSCartAPI;
     ```
-    Then, make and apply your Migrations
+    Also for testing, create special test databasase:
     ```
+    > CREATE DATABASE test_WSCartAPI;
+    ```
+    Then, make and apply your Migrations (if you not change anything, you can directly to db upgrade). If you want to create your own initiate upgrade, then:
+    ```
+    (venv)$ rm -rf migrations
+
     (venv)$ python manage.py db init
 
     (venv)$ python manage.py db migrate
     ```
 
-    And finally, migrate your migrations to persist on the DB
+    And finally upgrade, migrate your migrations to persist on the DB
     ```
     (venv)$ python manage.py db upgrade
     ```
@@ -73,8 +82,8 @@ A flask-driven restful API for Bucketlist interactions
     ```
     (venv)$ flask run
     ```
-    You can now access the app on your local browser by using
+    Or if you want to define address/port, you can
     ```
-    http://localhost:5000/bucketlists/
+    (venv)$ flask run --host=0.0.0.0 --port=5000
     ```
-    Or test creating bucketlists using Postman
+    You can now access the app on your local browser (after login) by using CURL or REST client 

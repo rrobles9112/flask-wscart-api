@@ -3,7 +3,7 @@ from flask_bcrypt import Bcrypt
 from flask import current_app
 import jwt
 from datetime import datetime, timedelta
-
+from sqlalchemy.orm import joinedload
 
 class User(db.Model):
     """This class defines the users table """
@@ -14,13 +14,15 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(256), nullable=False, unique=True)
     password = db.Column(db.String(256), nullable=False)
-    bucketlists = db.relationship(
-        'Bucketlist', order_by='Bucketlist.id', cascade="all, delete-orphan")
+    country_iso2 = db.Column(db.String(2), nullable=False)
+    charts = db.relationship(
+        'Cart', order_by='Cart.id', cascade="all, delete-orphan")
 
-    def __init__(self, email, password):
+    def __init__(self, email, password, country_iso2):
         """Initialize the user with an email and a password."""
         self.email = email
         self.password = Bcrypt().generate_password_hash(password).decode()
+        self.country_iso2 = country_iso2.upper()
 
     def password_is_valid(self, password):
         """
@@ -37,7 +39,6 @@ class User(db.Model):
 
     def generate_token(self, user_id):
         """Generates the access token to be used as the Authorization header"""
-
         try:
             # set up a payload with an expiration time
             payload = {
@@ -58,6 +59,12 @@ class User(db.Model):
             return str(e)
 
     @staticmethod
+    def get_user_country(user_id):
+        """Get the user properties, e.g country_iso2"""
+        user_login = User.query.filter_by(id=user_id).first()
+        return user_login.country_iso2
+
+    @staticmethod
     def decode_token(token):
         """Decode the access token from the Authorization header."""
         try:
@@ -68,44 +75,66 @@ class User(db.Model):
         except jwt.InvalidTokenError:
             return "Invalid token. Please register or login"
 
+class ItemCart(db.Model):
+    """This class defines the item_carts table which save detail every item in the chart."""
 
-class Bucketlist(db.Model):
-    """This class defines the bucketlist table."""
+    __tablename__ = 'item_carts'   
 
-    __tablename__ = 'bucketlists'
+    # define the columns of the table, starting with its primary key     
+    id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'))
+    item_id = db.Column(db.Integer) #item_id = db.Column(db.Integer, db.ForeignKey('products.id'))
+    item_name = db.Column(db.String(64))
+    item_price = db.Column(db.Float)    
+    amount = db.Column(db.Integer)
+    cart = db.relationship('Cart', backref=db.backref('item_carts', lazy=True))
+    # product = db.relationship('Product', backref=db.backref('products', lazy=True))
+
+    def __repr__(self):
+        """Return a representation of a ItemCart instance."""
+        return "<ItemCart: {}>".format(self.id)
+
+class Cart(db.Model):
+    """This class defines the carts table."""
+    
+    __tablename__ = 'carts'
 
     # define the columns of the table, starting with its primary key
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
     date_modified = db.Column(
         db.DateTime, default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
     created_by = db.Column(db.Integer, db.ForeignKey(User.id))
+    country_iso2 = db.Column(db.String(2), nullable=False)
+    status_id = db.Column(db.Integer, default=0)
+    cart = db.relationship('User', backref=db.backref('users', lazy=True))
 
-    def __init__(self, name, created_by):
-        """Initialize the bucketlist with a name and its creator."""
-        self.name = name
-        self.created_by = created_by
-
-    def save(self):
-        """Save a bucketlist.
-        This applies for both creating a new bucketlist
-        and updating an existing onupdate
-        """
+    def save(self, user_id, country_iso2, cart_data):
+        """Save a shopping cart"""     
+        self.created_by = user_id
+        self.country_iso2 = country_iso2
+        self.cart_data = cart_data
         db.session.add(self)
+        db.session.flush()
+        for data in self.cart_data:
+            icart = ItemCart(item_id=data['item_id'],item_name=data['item_name'],item_price=data['item_price'],
+                     amount=data['amount'],cart_id=self.id)
+            db.session.add(icart)
         db.session.commit()
 
     @staticmethod
     def get_all(user_id):
-        """This method gets all the bucketlists for a given user."""
-        return Bucketlist.query.filter_by(created_by=user_id)
+        """This method gets all the cart for a given user."""
+        return Cart.query.options(joinedload('item_carts')).filter_by(created_by=user_id)
+        # return session.query(Chart,ItemCart).filter_by(created_by=user_id)
 
-    def delete(self):
-        """Deletes a given bucketlist."""
-        db.session.delete(self)
-        db.session.commit()
-
+    @staticmethod
+    def get_one(user_id, id):
+        """This method gets specific cart id for a given user."""
+        return Cart.query.options(joinedload('item_carts')).filter_by(created_by=user_id).filter_by(id=id).first()
+        # return session.query(Chart,ItemCart).filter_by(created_by=user_id)
+    
     def __repr__(self):
-        """Return a representation of a bucketlist instance."""
-        return "<Bucketlist: {}>".format(self.name)
+        """Return a representation of a Cart instance."""
+        return "<Cart: {}>".format(self.id)
